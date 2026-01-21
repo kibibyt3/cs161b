@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cmath>
+#include <cassert>
 
 using namespace std;
 
@@ -8,6 +9,7 @@ int FindMax(int arr[], size_t size);
 int FindMin(int arr[], size_t size);
 double CalculateAverage(int arr[], size_t size);
 int CountAboveThreshold(int arr[], size_t size, int threshold);
+void tests();
 
 int main() {
    int scores[100];
@@ -19,7 +21,8 @@ int main() {
    int threshold = 0;
    
    int menu_option = 0;
-   
+ 
+   // tests(); // Uncomment this line to run unit tests.
    cout << "Enter a list of scores." << endl;
    cout << "All scores must be positive numbers." << endl;
 
@@ -90,6 +93,8 @@ int main() {
             cout << menu_option << " is not a valid menu option." << endl;
       }
       cout << "Press [ENTER] to continue..." << endl;
+
+      // Clear cin so cin.get() doesn't get confused.
       cin.ignore(numeric_limits<streamsize>::max(), '\n');
       cin.get();
    } while (menu_option != 0);
@@ -140,12 +145,8 @@ double CalculateAverage(int arr[], size_t size) {
 
    for (i = 0; i < size; sum += arr[i++]);
    
-   // use the trinary operator here
-   if (size < 1) {
-      sum = NAN;
-   }
-
-   return static_cast<double>(sum) / static_cast<double>(size);
+   avg = size < 1 ? NAN : static_cast<double>(sum) / static_cast<double>(size);
+   return avg;
 }
 
 int CountAboveThreshold(int arr[], size_t size, int threshold) {
@@ -159,4 +160,36 @@ int CountAboveThreshold(int arr[], size_t size, int threshold) {
    }
 
    return count;
+}
+
+void tests() {
+   // Permissible amount of floating point error for test outcomes.
+   const double FLOAT_ERROR = 0.01;
+   int arr1[] = {4, 0, 9};
+   int arr2[] = {1, 1, 3, 2};
+   int arr3[] = {-1}; // We'll use this as a placeholer for an empty array.
+
+   assert(FindMax(arr1, 3) == 9);
+   assert(FindMax(arr2, 4) == 3);
+   assert(FindMax(arr3, 0) == -1);
+   
+   assert(FindMin(arr1, 3) == 0);
+   assert(FindMin(arr2, 4) == 1);
+   assert(FindMin(arr3, 0) == -1);
+
+   // Direct comparison of floating-point values is error-prone; let's give a
+   // range of correct values instead.
+   assert(
+      CalculateAverage(arr1, 3) + FLOAT_ERROR > 13.0 / 3.0 &&
+      CalculateAverage(arr1, 3) - FLOAT_ERROR < 13.0 / 3.0
+   );
+   assert(
+      CalculateAverage(arr2, 4) + FLOAT_ERROR > 7.0 / 4 &&
+      CalculateAverage(arr2, 4) - FLOAT_ERROR < 7.0 / 4
+   );
+   assert(isnan(CalculateAverage(arr3, 0)));
+
+   assert(CountAboveThreshold(arr1, 3, 2) == 2);
+   assert(CountAboveThreshold(arr2, 4, 1) == 2);
+   assert(CountAboveThreshold(arr3, 0, 99) == 0);
 }
