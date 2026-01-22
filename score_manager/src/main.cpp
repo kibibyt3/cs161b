@@ -1,3 +1,13 @@
+/******************************************************************************
+ # Author:        Liv Callister
+ # Assignment:    Assignment 1
+ # Date:          21 January 2026
+ # Description:   This program operates on a user-input list of scores.
+ # Input:         int scores[]
+ # Output:        int scores[], int maximum, int minimum, double average,
+ #                int (count above threshold)
+ # Sources:       Assignment 1 s`pecifications, en.cppreference.com
+ #****************************************************************************/
 #include <iostream>
 #include <cmath>
 #include <cassert>
@@ -11,6 +21,12 @@ double CalculateAverage(int arr[], size_t size);
 int CountAboveThreshold(int arr[], size_t size, int threshold);
 void tests();
 
+// Name:    main()
+// Desc:    This function handles high-level control flow.
+// Input:   None
+// Output:  int maximum, int minimum, double average,
+//          int (count above threshold)
+// Return:  None
 int main() {
    int scores[100];
    int score = 0;
@@ -103,7 +119,11 @@ int main() {
    return 0;
 }
 
-
+// Name:    PrintScores(int arr[], size_t size)
+// Desc:    This function prints the values in an array.
+// Input:   int array of scores, size_t (number of elements in array).
+// Output:  int array of scores
+// Return:  None
 void PrintScores(int arr[], size_t size) {
    size_t i = 0;
    for (i = 0; i < size; i++) {
@@ -111,6 +131,11 @@ void PrintScores(int arr[], size_t size) {
    }
 }
 
+// Name:    FindMax(int arr[], size_t size)
+// Desc:    This function finds the maximum integer in an array.
+// Input:   int array, size_t (number of elements in array).
+// Output:  None
+// Return:  int maximum
 int FindMax(int arr[], size_t size) {
    size_t i = 0;
    int max = -1;
@@ -122,6 +147,11 @@ int FindMax(int arr[], size_t size) {
    return max;
 }
 
+// Name:    FindMin(int arr[], size_t size)
+// Desc:    This function finds the minimum integer in an array.
+// Input:   int array, size_t (number of elements in array).
+// Output:  None
+// Return:  int minimum
 int FindMin(int arr[], size_t size) {
    size_t i = 0;
    int min = -1;
@@ -138,6 +168,11 @@ int FindMin(int arr[], size_t size) {
    return min;
 }
 
+// Name:    CalculateAverage(int arr[], size_t size)
+// Desc:    This function finds the average value in an array.
+// Input:   int array, size_t (number of elements in array).
+// Output:  None
+// Return:  double average
 double CalculateAverage(int arr[], size_t size) {
    size_t i = 0;
    int sum = 0;
@@ -149,6 +184,13 @@ double CalculateAverage(int arr[], size_t size) {
    return avg;
 }
 
+// Name:    CountAboveThreshold(int arr[], size_t size, int threshold)
+// Desc:    This function finds the number of integers in an array greater than
+//          some value.
+// Input:   int array, size_t (number of elements in array),
+//          int (minimum threshold, non-inclusive).
+// Output:  None
+// Return:  int count
 int CountAboveThreshold(int arr[], size_t size, int threshold) {
    size_t i = 0;
    int count = 0;
@@ -162,6 +204,12 @@ int CountAboveThreshold(int arr[], size_t size, int threshold) {
    return count;
 }
 
+// Name:    tests()
+// Desc:    This function runs unit tests for the program, and will abort (with
+//          a diagnostic) if one of the tests fails.
+// Input:   None
+// Output:  Diagnostic in stderr if a test fails
+// Return:  None
 void tests() {
    // Permissible amount of floating point error for test outcomes.
    const double FLOAT_ERROR = 0.01;
