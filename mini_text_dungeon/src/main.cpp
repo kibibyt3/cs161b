@@ -11,6 +11,7 @@
 #*****************************************************************************/
 #include <cstdlib>
 #include <ncurses.h>
+#include <time.h>
 
 typedef enum {
    TILE_FLOOR,
@@ -39,7 +40,7 @@ typedef struct {
    unsigned short y;
 } Coords;
 
-Map map_new();
+void map_populate(Map map);
 void map_print(Map map);
 void map_switch(Map map, size_t from, size_t to);
 char tile_to_char(Tile tile);
@@ -58,21 +59,21 @@ int main() {
    InputCommand input = INPUT_DEFAULT;
 
    // Seed std::rand();
-   std::srand(std::time(0));
+   std::srand(time(0));
 
    // Initialize ncurses.
    initscr();
    noecho();
    raw();
 
-   // Initialize map;
-   map = map_new();
-
+   // Initialize map.
+   map_populate(map);
+   
    do {
       map_print(map);
       refresh();
       // Get user input.
-      InputCommand input = static_cast<InputCommand>(getch());
+      input = static_cast<InputCommand>(getch());
       // Operate on user input.
       handle_user_input(map, input);
    } while (input != INPUT_EXIT);
@@ -83,9 +84,7 @@ int main() {
    return EXIT_SUCCESS;
 }
 
-Map map_new() {
-   Map map;
-
+void map_populate(Map map) {
    bool wall_row = false;
    unsigned short wall_gap = 0;
 
@@ -116,7 +115,7 @@ Map map_new() {
    
    for (y = 0; y < MAP_HEIGHT; y++) {
       // Rows can occasionally be filled with a wall containing a gap.
-      if (wall_row = (std::rand() % 6 == 0)) {
+      if ((wall_row = std::rand() % 6 == 0)) {
          wall_gap = std::rand() % MAP_WIDTH;
       }
       for (x = 0; x < MAP_WIDTH; x++) {
@@ -129,7 +128,7 @@ Map map_new() {
          }
          else if (wall_row) {
             // Ensure our wall has a gap, but this can also happen randomly.
-            if (x = wall_gap || std::rand() % 6 == 0) {
+            if (x == wall_gap || std::rand() % 6 == 0) {
                map[index] = TILE_FLOOR;
             }
             else {
@@ -141,13 +140,13 @@ Map map_new() {
          }
       }
    }
-
-   return map;
 }
 
 void map_print(Map map) {
    size_t i = 0;
-   Coords coords = { x = 0; y = 0; };
+   Coords coords;
+   coords.x = 0;
+   coords.y = 0;
    for (i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
       coords = index_to_coords(i);
       if (mvaddch(coords.y, coords.x, tile_to_char(map[i])) == ERR) {
@@ -157,7 +156,7 @@ void map_print(Map map) {
 }
 
 void map_switch(Map map, size_t from, size_t to) {
-   temp_tile = map[to];
+   Tile temp_tile = map[to];
    map[to] = map[from];
    map[from] = temp_tile;
 }
@@ -165,9 +164,12 @@ void map_switch(Map map, size_t from, size_t to) {
 size_t map_tile_index(Map map, Tile tile) {
    size_t tile_index = 0;
    size_t i = 0;
-   size_t max_index = coords_to_index(
-            Coords { x = MAP_WIDTH; y = MAP_HEIGHT; }
-         );
+   size_t max_index = 0;
+   Coords max_coords;
+   
+   max_coords.x = MAP_WIDTH;
+   max_coords.y = MAP_HEIGHT;
+   max_index = coords_to_index(max_coords);
    for (i = 0; i < max_index; i++) {
       if (map[i] == tile) {
          tile_index = i;
@@ -178,6 +180,7 @@ size_t map_tile_index(Map map, Tile tile) {
 }
 
 void handle_user_input(Map map, InputCommand input) {
+   size_t player_index = 0;
    player_index = map_tile_index(map, TILE_PLAYER);
    switch (input) {
       case INPUT_MOVE_NORTH:
@@ -194,18 +197,21 @@ void handle_user_input(Map map, InputCommand input) {
          break;
       case INPUT_EXIT:
          break; // This is handled in the main loop.
+      case INPUT_DEFAULT:
+         abort();
+         break;
    }
 }
 
-size_t coords_to_index(coords Coords) {
+size_t coords_to_index(Coords coords) {
    return (coords.y * MAP_HEIGHT) + coords.x;
 }
 
 Coords index_to_coords(size_t index) {
-   return Coords {
-      x = index % MAP_WIDTH;
-      y = index / MAP_HEIGHT;
-   };
+   Coords coords;
+   coords.x = index % MAP_WIDTH;
+   coords.y = index / MAP_HEIGHT;
+   return coords;
 }
 
 
