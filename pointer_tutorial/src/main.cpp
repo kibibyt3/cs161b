@@ -1,11 +1,12 @@
 /******************************************************************************
-# Author:
-# Assignment:
-# Date:
-# Description:
-# Input:
-# Output:
-# Sources: en.cppreference.org, en.wikipedia.org
+# Author:      Liv Callister
+# Assignment:  Discussion 7
+# Date:        11 March 2026
+# Description: This program prints a tutorial for using asterisks (*) in C++.
+# Input:       size_t (menu choice), ch (y/n character)
+# Output:      Pointer tutorial
+# Sources:     en.cppreference.org, en.wikipedia.org,
+               Discussion 7 Specifications
 #*****************************************************************************/
 #include <limits>
 #include <iostream>
