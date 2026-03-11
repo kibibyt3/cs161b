@@ -74,11 +74,11 @@ memory (a) containing data of some type (t).",
    },
 };
 
-// Name:
-// Desc:
-// Input:
-// Output:
-// Return:
+// Name:    int main()
+// Desc:    This function controls the high-level control flow of the program.
+// Input:   None
+// Output:  Pointer tutorial
+// Return:  0 on success.
 int main() {
    size_t menu_option = 0;
 
@@ -92,8 +92,14 @@ int main() {
    } while (menu_option != 4);
 
    cout << "Thank you for using the pointer tutorial!" << endl;
+   return 0;
 }
 
+// Name:    print_page(const Page &page)
+// Desc:    This function prints the contents of a Page.
+// Input:   const Page &(page to print)
+// Output:  const Page &(page to print)
+// Return:  None
 void print_page(const Page &page) {
    size_t i = 0;
    cout << "DESCRIPTION:" << endl;
@@ -114,6 +120,11 @@ void print_page(const Page &page) {
    }
 }
 
+// Name:    size_t menu_option_prompt(const char *prompt)
+// Desc:    This function prompts the user for a size_t between 1 and 4.
+// Input:   const char *(prompt for user)
+// Output:  const char *(prompt for user)
+// Return:  size_t (user choice)
 size_t menu_option_prompt(const char *prompt) {
    size_t choice = 0;
    cout << prompt;
@@ -126,6 +137,11 @@ size_t menu_option_prompt(const char *prompt) {
    return choice;
 }
 
+// Name:    bool prompt_for_example(const char *prompt)
+// Desc:    This function prompts the user for a (y/N).
+// Input:   const char *(prompt for user)
+// Output:  const char *(prompt for user)
+// Return:  bool (true if user says yes)
 bool prompt_for_example(const char *prompt) {
    char ch = '\0';
    cout << prompt;
