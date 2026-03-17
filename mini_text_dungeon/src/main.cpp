@@ -21,6 +21,7 @@ typedef enum {
    TILE_WALL,
    TILE_PLAYER,
    TILE_TREASURE,
+   TILE_WISP,
    TILE_DEFAULT
 } Tile;
 
@@ -29,8 +30,16 @@ typedef enum {
    OUTCOME_EMPTY,
    OUTCOME_IMMOVABLE,
    OUTCOME_VICTORY,
+   OUTCOME_DEATH,
    OUTCOME_DEFAULT,
 } ActionOutcome;
+
+typedef enum {
+   DIRECTION_NORTH,
+   DIRECTION_SOUTH,
+   DIRECTION_EAST,
+   DIRECTION_WEST,
+} Direction;
 
 // User controls
 typedef enum {
@@ -45,7 +54,7 @@ typedef enum {
 const unsigned short MAP_HEIGHT = 20;
 const unsigned short MAP_WIDTH = 10;
 
-typedef Tile Map[MAP_HEIGHT * MAP_WIDTH];
+typedef Tile Map[MAP_HEIGHT][MAP_WIDTH];
 
 typedef struct {
    unsigned short x;
@@ -54,11 +63,10 @@ typedef struct {
 
 void map_populate(Map map);
 void map_print(Map map);
-void map_tile_swap(Map map, size_t from, size_t to);
+void map_tile_swap(Map map, Coords from, Coords to);
 char tile_to_char(Tile tile);
 ActionOutcome handle_user_input(Map map, InputCommand input);
-size_t coords_to_index(Coords coords);
-Coords index_to_coords(size_t index);
+Tile move_unique_tile(Map map, Tile tile, Direction direction);
 void tests();
 
 // Name:    main()
@@ -104,7 +112,11 @@ int main() {
       if (outcome == OUTCOME_EMPTY || outcome == OUTCOME_VICTORY) {
          steps_taken++;
       }
-   } while (input != INPUT_EXIT && outcome != OUTCOME_VICTORY);
+   } while (
+         input != INPUT_EXIT
+         && outcome != OUTCOME_VICTORY
+         && outcome != OUTCOME_DEATH
+         );
 
    // Clean up ncurses.
    endwin();
@@ -114,6 +126,9 @@ int main() {
    std::cout << "---------" << std::endl;
    if (outcome == OUTCOME_VICTORY) {
       std::cout << "You won!" << std::endl;
+   }
+   else if (outcome == OUTCOME_DEATH) {
+      std::cout << "You were killed by a will-o'-the-wisp..." << std::endl;
    }
    else {
       std::cout << "You didn't win..." << std::endl;
@@ -131,9 +146,7 @@ int main() {
 void map_populate(Map map) {
    bool wall_row = false;
    unsigned short wall_gap = 0;
-   Coords coords;
 
-   size_t index = 0;
    unsigned short y = 0;
    unsigned short x = 0;
 
@@ -141,6 +154,8 @@ void map_populate(Map map) {
    unsigned short player_start_y = 0;
    unsigned short treasure_start_x = 0;
    unsigned short treasure_start_y = 0;
+   unsigned short wisp_start_x = 0;
+   unsigned short wisp_start_y = 0;
 
    do {
       // Set up player and treasure coordinates, ensuring they don't begin
@@ -153,11 +168,18 @@ void map_populate(Map map) {
       // Put treasure in the final fourth of the map.
       treasure_start_y = 
          (std::rand() % (MAP_HEIGHT / 4) + ((MAP_HEIGHT / 4) * 3)) - 1;
+
+      wisp_start_x = (std::rand() % (MAP_WIDTH - 2)) + 1;
+      // Put wisp in the middle third of the map.
+      wisp_start_y = 
+         (std::rand() % (MAP_HEIGHT / 3) + (MAP_HEIGHT / 3));
    } while (
-         // Player and treasure can't be in the same spot!
-         // This is a failsafe for maps with height < 4.
-         player_start_x == treasure_start_x
-         && player_start_y == treasure_start_y
+         // Player/treasure/wisp can't be in the same spot!
+         // This is a failsafe for small maps.
+         (player_start_x == treasure_start_x
+            && player_start_y == treasure_start_y)
+         || (treasure_start_x == wisp_start_x
+            && treasure_start_y == wisp_start_y)
    );
    
    for (y = 0; y < MAP_HEIGHT; y++) {
@@ -172,31 +194,31 @@ void map_populate(Map map) {
          }
       }
       for (x = 0; x < MAP_WIDTH; x++) {
-         coords.x = x;
-         coords.y = y;
-         index = coords_to_index(coords);
          if (x == player_start_x && y == player_start_y) {
-            map[index] = TILE_PLAYER;
+            map[y][x] = TILE_PLAYER;
          }
          else if (x == treasure_start_x && y == treasure_start_y) {
-            map[index] = TILE_TREASURE;
+            map[y][x] = TILE_TREASURE;
+         }
+         else if (x == wisp_start_x && y == wisp_start_y) {
+            map[y][x] = TILE_WISP;
          }
          // The exterior of the map must be bordered by walls.
          else if (x == 0 || y == 0 
                || x == MAP_WIDTH - 1 || y == MAP_HEIGHT - 1) {
-            map[index] = TILE_WALL;
+            map[y][x] = TILE_WALL;
          }
          else if (wall_row) {
             // Ensure our wall has a gap, but this can also happen randomly.
             if (x == wall_gap || std::rand() % 6 == 0) {
-               map[index] = TILE_FLOOR;
+               map[y][x] = TILE_FLOOR;
             }
             else {
-               map[index] = TILE_WALL;
+               map[y][x] = TILE_WALL;
             }
          }
          else {
-            map[index] = TILE_FLOOR;
+            map[y][x] = TILE_FLOOR;
          }
       }
    }
@@ -208,53 +230,53 @@ void map_populate(Map map) {
 // Output:  None
 // Return:  None; this function will abort if the screen is too small.
 void map_print(Map map) {
-   size_t i = 0;
-   Coords coords;
-   coords.x = 0;
-   coords.y = 0;
-   for (i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
-      coords = index_to_coords(i);
-      if (mvaddch(coords.y, coords.x, tile_to_char(map[i])) == ERR) {
-         abort();
+   unsigned short x = 0;
+   unsigned short y = 0;
+
+   for (y = 0; y < MAP_HEIGHT; y++) {
+      for (x = 0; x < MAP_WIDTH; x++) {
+         if (mvaddch(y, x, tile_to_char(map[y][x])) == ERR) {
+            abort();
+         }
       }
    }
 }
 
-// Name:    map_tile_swap(Map map, size_t from, size_t to)
+// Name:    map_tile_swap(Map map, Coords from, Coords to)
 // Desc:    Exchange the places of two tiles.
-// Input:   Map map, size_t (first tile's index), size_t (second tile's index)
+// Input:   Map map, Coords (first tile's coords),
+//          Coords (second tile's coords)
 // Output:  None
 // Return:  None
-void map_tile_swap(Map map, size_t from, size_t to) {
+void map_tile_swap(Map map, Coords from, Coords to) {
    Tile temp_tile = TILE_DEFAULT;
 
    // Movement is implemented as displacement.
-   temp_tile = map[to];
-   map[to] = map[from];
-   map[from] = temp_tile;
+   temp_tile = map[to.y][to.x];
+   map[to.y][to.x] = map[from.y][from.x];
+   map[from.y][from.x] = temp_tile;
 }
 
-// Name:    map_tile_index(Map map, Tile tile)
-// Desc:    Find the final instance on a map of a given tile.
+// Name:    map_tile_coords(Map map, Tile tile)
+// Desc:    Find coords of the final instance on a map of a given tile.
 // Input:   Map map, Tile (tile type to match)
 // Output:  None
-// Return:  size_t (tile index), or 0 if no match is found
-size_t map_tile_index(Map map, Tile tile) {
-   size_t tile_index = 0;
-   size_t i = 0;
-   size_t max_index = 0;
-   Coords max_coords;
+// Return:  Coords (tile coords), or (0, 0) if no match is found
+Coords map_tile_coords(Map map, Tile tile) {
+   Coords tile_coords = { 0, 0 };
+   unsigned short x = 0;
+   unsigned short y = 0;
    
-   max_coords.x = MAP_WIDTH;
-   max_coords.y = MAP_HEIGHT;
-   max_index = coords_to_index(max_coords);
-   for (i = 0; i < max_index; i++) {
-      if (map[i] == tile) {
-         tile_index = i;
+   for (y = 0; y < MAP_HEIGHT; y++) {
+      for (x = 0; x < MAP_WIDTH; x++) {
+         if (map[y][x] == tile) {
+            tile_coords.x = x;
+            tile_coords.y = y;
+         }
       }
    }
 
-   return tile_index;
+   return tile_coords;
 }
 
 // Name:    handle_user_input(Map map, InputCommand input)
@@ -264,27 +286,30 @@ size_t map_tile_index(Map map, Tile tile) {
 // Return:  ActionOutcome outcome; this function will abort when given 
 //          INPUT_DEFAULT.
 ActionOutcome handle_user_input(Map map, InputCommand input) {
-   size_t player_index = 0;
-   player_index = map_tile_index(map, TILE_PLAYER);
+   Direction player_target_direction = DIRECTION_NORTH;
+   Direction wisp_target_direction = DIRECTION_NORTH;
+   Tile player_target_tile = TILE_DEFAULT;
+   Tile wisp_target_tile = TILE_DEFAULT;
    bool move = false;
-   size_t target_index = 0;
+
    ActionOutcome outcome = OUTCOME_DEFAULT;
+   
    switch (input) {
       case INPUT_MOVE_NORTH:
          move = true;
-         target_index = player_index - MAP_WIDTH;
+         player_target_direction = DIRECTION_NORTH;
          break;
       case INPUT_MOVE_SOUTH:
          move = true;
-         target_index = player_index + MAP_WIDTH;
+         player_target_direction = DIRECTION_SOUTH;
          break;
       case INPUT_MOVE_EAST:
          move = true;
-         target_index = player_index + 1;
+         player_target_direction = DIRECTION_EAST;
          break;
       case INPUT_MOVE_WEST:
          move = true;
-         target_index = player_index - 1;
+         player_target_direction = DIRECTION_WEST;
          break;
       case INPUT_EXIT:
          break; // This is handled in the main loop.
@@ -293,14 +318,25 @@ ActionOutcome handle_user_input(Map map, InputCommand input) {
          break;
    }
    if (move) {
-      if (map[target_index] == TILE_WALL) {
+      wisp_target_direction = static_cast<Direction>(std::rand() % 4);
+      wisp_target_tile = move_unique_tile(
+            map,
+            TILE_WISP,
+            wisp_target_direction);
+      player_target_tile = move_unique_tile(
+            map,
+            TILE_PLAYER,
+            player_target_direction);
+      if (player_target_tile == TILE_WISP || wisp_target_tile == TILE_PLAYER) {
+         outcome = OUTCOME_DEATH;
+      }
+      else if (player_target_tile == TILE_WALL) {
          outcome = OUTCOME_IMMOVABLE;
       }
-      else if (map[target_index] == TILE_TREASURE) {
+      else if (player_target_tile == TILE_TREASURE) {
          outcome = OUTCOME_VICTORY;
       }
       else {
-         map_tile_swap(map, player_index, target_index);
          outcome = OUTCOME_EMPTY;
       }
    } else {
@@ -310,25 +346,39 @@ ActionOutcome handle_user_input(Map map, InputCommand input) {
    return outcome;
 }
 
-// Name:    coords_to_index(Coords coords)
-// Desc:    Convert coordinates to a map index.
-// Input:   Coords coords
+// Name:    Tile move_unique_tile(Map map, Tile tile, Direction direction)
+// Desc:    This function moves a unique tile on the map, if possible.
+// Input:   Map map, Tile (unique tile), Direction direction
 // Output:  None
-// Return:  size_t index
-size_t coords_to_index(Coords coords) {
-   return (coords.y * MAP_WIDTH) + coords.x;
-}
+// Return:  Tile at targeted space
+Tile move_unique_tile(Map map, Tile tile, Direction direction) {
+   Coords tile_coords;
+   Coords target_coords;
+   Tile target_tile = TILE_DEFAULT;
 
-// Name:    index_to_coords(size_t index)
-// Desc:    Convert a map index to coordinates.
-// Input:   size_t index
-// Output:  None
-// Return:  Coords coords
-Coords index_to_coords(size_t index) {
-   Coords coords;
-   coords.x = index % MAP_WIDTH;
-   coords.y = index / MAP_WIDTH;
-   return coords;
+   tile_coords = map_tile_coords(map, tile);
+   target_coords = tile_coords;
+   switch (direction) {
+      case DIRECTION_NORTH:
+         target_coords.y -= 1;
+         break;
+      case DIRECTION_SOUTH:
+         target_coords.y += 1;
+         break;
+      case DIRECTION_EAST:
+         target_coords.x += 1;
+         break;
+      case DIRECTION_WEST:
+         target_coords.x -= 1;
+         break;
+   }
+
+   target_tile = map[target_coords.y][target_coords.x];
+   if (target_tile == TILE_FLOOR) {
+      map_tile_swap(map, tile_coords, target_coords);
+   }
+
+   return target_tile;
 }
 
 // Name:    tile_to_char(Tile tile)
@@ -351,6 +401,9 @@ char tile_to_char(Tile tile) {
       case TILE_TREASURE:
          ch = 'T';
          break;
+      case TILE_WISP:
+         ch = '*';
+         break;
       case TILE_DEFAULT:
          abort(); // TILE_DEFAULT is an initialization value.
          break;
@@ -364,27 +417,19 @@ char tile_to_char(Tile tile) {
 // Output:  None
 // Return:  None; this function will abort if a test fails.
 void tests() {
-   size_t index = 0;
-   Coords coords;
    Map map;
-   size_t i = 0;
-
-   coords.x = 0;
-   coords.y = 1;
-   index = MAP_WIDTH;
-   assert(
-         index_to_coords(index).x == coords.x
-         && index_to_coords(index).y == coords.y
-   );
-   assert(coords_to_index(coords) == index);
+   unsigned short y = 0;
+   unsigned short x = 0;
 
    map_populate(map);
-   for (i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
-      assert(
-            map[i] == TILE_FLOOR
-            || map[i] == TILE_TREASURE
-            || map[i] == TILE_WALL
-            || map[i] == TILE_PLAYER
-      );
+   for (y = 0; y < MAP_HEIGHT; y++) {
+      for (x = 0; x < MAP_WIDTH; x++) {
+         assert(
+               map[y][x] == TILE_FLOOR
+               || map[y][x] == TILE_TREASURE
+               || map[y][x] == TILE_WALL
+               || map[y][x] == TILE_PLAYER
+         );
+      }
    }
 }
